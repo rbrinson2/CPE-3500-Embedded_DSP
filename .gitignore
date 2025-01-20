@@ -1,5 +1,13 @@
 # STM32cubeIDE 
 .metadata/
+Lab1/Drivers
+Lab1/.settings/
+Lab1/.project
+Lab1/.cproject
+Lab1/.mxproject
+Lab1/Lab1.ioc
+Lab1/STM32L476RGTX_RAM.ld
+Lab1/STM32L476RGTX_FLASH.ld
 
 # Prerequisites
 *.d
