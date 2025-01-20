@@ -1,0 +1,9 @@
+Debug
+Drivers
+.settings/
+.project
+.cproject
+.mxproject
+Lab1.ioc
+STM32L476RGTX_RAM.ld
+STM32L476RGTX_FLASH.ld
