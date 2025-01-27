@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define N 20
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,7 +44,10 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+int n;
+int delta[N], step[N], rect[N];
+float expon[N], sinus[N], x1[N];
+float a = 0.8, w0 = PI/4, w1 = PI/8;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,6 +71,40 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+	// unit impulse signal
+	for(n=0;n<N;n++){
+		if (n == 0) delta[n] = 1;
+		else delta[n] = 0;
+	}
+
+	//unit step signal
+	for(n=0;n<N;n++) step[n]=1;
+	for(n=0;n<N;n++) {
+		if (n < 3) x1[n] = 0;
+		else x1[n] = step[n - 3];
+	}
+
+	//rectangular signal between n=0 and 5
+	for(n=0;n<N;n++){
+	  if ((n>=0) & (n<6)) rect[n]=1;
+	  else rect[n]=0;
+	}
+	for(n=0;n<N;n++) {
+		if (n < 3) x1[n] = 0;
+		else x1[n] = expon[n - 3];
+	}
+
+	//exponential signal
+	for(n=0;n<N;n++) expon[n]=pow(a,(float)n);
+	for(n=0;n<N;n++) {
+		if (n < 3) x1[n] = 0;
+		else x1[n] = expon[n - 3];
+	}
+
+
+	//sinusoidal signal
+	for(n=0;n<N;n++) sinus[n]=sin(w0*(float)n) + sin(w1*(float)n);
 
   /* USER CODE END 1 */
 
