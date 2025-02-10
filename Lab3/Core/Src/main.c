@@ -33,6 +33,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define N 20
+#define a 2.2
+#define b -1.1
+#define c 0.7
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,10 +47,7 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-int n;
-int delta[N], step[N], rect[N];
-float expon[N], sinus[N], x1[N];
-float a = 0.8, w0 = PI/4, w1 = PI/8;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,7 +60,13 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void system1(float input[], float output[], int size){
+  int n;
+  for (n = 0; n < size; n++) {
+    if (n == 0) output[n] = input[n];
+    else output[n] = a * input[n] + b * input[n - 1] + c * input[n - 1]; 
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -69,42 +75,14 @@ static void MX_USART2_UART_Init(void);
   */
 int main(void)
 {
-
+  float inp[N];
+  float outp[N];
+  for (int i = 0; i < N; i++) {
+    if (i < 7) inp[i] = 1;
+    else inp[i] = 0;
+  }
   /* USER CODE BEGIN 1 */
-
-	// unit impulse signal
-	for(n=0;n<N;n++){
-		if (n == 0) delta[n] = 1;
-		else delta[n] = 0;
-	}
-
-	//unit step signal
-	for(n=0;n<N;n++) step[n]=1;
-	for(n=0;n<N;n++) {
-		if (n < 3) x1[n] = 0;
-		else x1[n] = step[n - 3];
-	}
-
-	//rectangular signal between n=0 and 5
-	for(n=0;n<N;n++){
-	  if ((n>=0) & (n<6)) rect[n]=1;
-	  else rect[n]=0;
-	}
-	for(n=0;n<N;n++) {
-		if (n < 3) x1[n] = 0;
-		else x1[n] = expon[n - 3];
-	}
-
-	//exponential signal
-	for(n=0;n<N;n++) expon[n]=pow(a,(float)n);
-	for(n=0;n<N;n++) {
-		if (n < 3) x1[n] = 0;
-		else x1[n] = expon[n - 3];
-	}
-
-
-	//sinusoidal signal
-	for(n=0;n<N;n++) sinus[n]=sin(w0*(float)n) + sin(w1*(float)n);
+  system1(inp, outp, N);
 
   /* USER CODE END 1 */
 
