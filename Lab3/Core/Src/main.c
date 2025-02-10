@@ -64,7 +64,7 @@ void system1(float input[], float output[], int size){
   int n;
   for (n = 0; n < size; n++) {
     if (n == 0) output[n] = input[n];
-    else output[n] = a * input[n] + b * input[n - 1] + c * input[n - 1]; 
+    else output[n] = input[n] + b * input[n - 1]; 
   }
 }
 /* USER CODE END 0 */
