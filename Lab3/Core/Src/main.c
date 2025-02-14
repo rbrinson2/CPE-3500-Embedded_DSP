@@ -92,6 +92,13 @@ void system1(float input[], float output[], int size){
   }
 }
 
+void system2(float input[], float output[], int size){
+  int n;
+  for (n = 0; n < size; n++) {
+    if (n == 0) output[n] = input[n];
+    else output[n] = a * input[n] + b * input[n - 1] + c * output[n - 1]; 
+  }
+}
 void convolution(float x[], float h[], float y[], int sizeX, int sizeH)
 {
   int n, k;  // variables for loops
@@ -130,6 +137,7 @@ int main(void)
   }
   /* USER CODE BEGIN 1 */
   system1(inp, outp, N);
+  system2(inp, outp, N);
     //Single Tone Sinusoidal signal and Four Frequency Combined Sinusoidal Signal
   for(int n = 0; n < N; n++)
   {
