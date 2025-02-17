@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "math.h"
 #include "arm_math.h"
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define N 40
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,6 +47,8 @@ ADC_HandleTypeDef hadc1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+uint32_t val;
+float real_val;
 
 /* USER CODE END PV */
 
@@ -71,7 +74,10 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  float arr[N];
+  float delta = 3 / ((3 / 3.3) * 4095);
+  float voltage;
+  voltage = 0.0 * delta;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -95,6 +101,14 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  for (int i = 0; i < N; i++){
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+    val = HAL_ADC_GetValue(&hadc1);
+    voltage = val * delta;
+    arr[i] = voltage;
+    HAL_Delay(50);
+  }
 
   /* USER CODE END 2 */
 
@@ -103,6 +117,10 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+    val = HAL_ADC_GetValue(&hadc1);
+    HAL_Delay(50);
 
     /* USER CODE BEGIN 3 */
   }
