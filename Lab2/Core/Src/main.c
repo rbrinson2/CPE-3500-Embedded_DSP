@@ -32,7 +32,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define N 20
+#define BUFFER_HALFSIZE 500
+#define BUFFER_SIZE 1000
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,10 +46,8 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-int n;
-int delta[N], step[N], rect[N];
-float expon[N], sinus[N], x1[N];
-float a = 0.8, w0 = PI/4, w1 = PI/8;
+uint32_t adc_buffer[BUFFER_SIZE];
+uint32_t dac_buffer[BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,7 +128,9 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_TIM_Base_Start(&htim6);
+  HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -264,7 +266,16 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
+	for (int n = 0; n < BUFFER_HALFSIZE; n++) {
+	 dac_buffer[n] = adc_buffer[n];
+	}
+}
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	for (int n = BUFFER_HALFSIZE; n < BUFFER_SIZE; n++) {
+		dac_buffer[n] = adc_buffer[n];
+	}
+}
 /* USER CODE END 4 */
 
 /**
