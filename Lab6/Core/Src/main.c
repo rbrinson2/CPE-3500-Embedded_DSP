@@ -428,24 +428,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
-  HAL_ADC_Stop_DMA(&hadc1);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-  for (int n = 0; n < BUFFER_HALFSIZE; n++) {
-    dac_buffer[n] = adc_buffer[n];
-  }
 }
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
   HAL_ADC_Stop_DMA(&hadc1);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-  for (int n = BUFFER_HALFSIZE; n < BUFFER_SIZE; n++) {
+
+  for (int n = 0; n < BUFFER_SIZE; n++) {
     dac_buffer[n] = adc_buffer[n];
   }
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
 }
+
 void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef *hdac)
 {
 }
 void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef *hdac)
 {
+  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 }
 
 /* USER CODE END 4 */
