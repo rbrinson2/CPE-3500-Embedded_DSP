@@ -32,9 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_HALFSIZE 500
-#define BUFFER_SIZE 1000
-#define MIDPOINT_VALUE 2048
+
 
 /* USER CODE END PD */
 
@@ -55,8 +53,7 @@ TIM_HandleTypeDef htim6;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint32_t adc_buffer[BUFFER_SIZE];
-uint32_t dac_buffer[BUFFER_SIZE];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -417,28 +414,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-  void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
-    for (int n = 0; n < BUFFER_HALFSIZE; n++) {
-      //dac_buffer[n] = adc_buffer[n];
-      //dac_buffer[n] = adc_buffer[n] / 2;
-      if (adc_buffer[n] < MIDPOINT_VALUE) {
-        dac_buffer[n] = 2 * MIDPOINT_VALUE - adc_buffer[n];
-      } else {
-    	dac_buffer[n] = adc_buffer[n];
-      }
-    }
-  }
-  void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-    for (int n = BUFFER_HALFSIZE; n < BUFFER_SIZE; n++) {
-      //dac_buffer[n] = adc_buffer[n];
-      // dac_buffer[n] = adc_buffer[n] / 2;
-      if (adc_buffer[n] < MIDPOINT_VALUE) {
-        dac_buffer[n] = 2 * MIDPOINT_VALUE - adc_buffer[n];
-      } else {
-        dac_buffer[n] = adc_buffer[n];
-      }
-    }
-  }
+
 /* USER CODE END 4 */
 
 /**
