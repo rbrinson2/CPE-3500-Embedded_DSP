@@ -21,8 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "math.h"
-#include "arm_math.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,9 +31,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_SIZE 20000
-#define BUFFER_HALFSIZE BUFFER_SIZE / 2
-
+#define BUFFER_HALFSIZE 1000
+#define BUFFER_SIZE 2000
+#define COS_TABLE_LEN 50
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,7 +55,14 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint16_t adc_buffer[BUFFER_SIZE];
 uint16_t dac_buffer[BUFFER_SIZE];
-
+static int16_t cos_table[COS_TABLE_LEN] = {
+32767, 32509, 31738, 30466, 28714, 26509, 23886, 20886,
+17557, 13952, 10126, 6140, 2057, -2057, -6140, -10126, -13952,
+-17557, -20886, -23886, -26509, -28714, -30466, -31738, -32509,
+-32767, -32509, -31738, -30466, -28714, -26509, -23886, -20886,
+-17557, -13952, -10126, -6140, -2057, 2057, 6140, 10126, 13952,
+17557, 20886, 23886, 26509, 28714, 30466, 31738, 32509
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,7 +91,6 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -111,11 +116,10 @@ int main(void)
   MX_ADC1_Init();
   MX_DAC1_Init();
   MX_TIM6_Init();
-
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim6);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-
+  HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -389,6 +393,7 @@ static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
+
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
@@ -398,57 +403,40 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD2_Pin PA8 */
-  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_8;
+  /*Configure GPIO pin : LD2_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
+
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
+void processBuffer(uint16_t *inBuffer, uint16_t *outBuffer, uint16_t size) {
+
+	for (int i = 0; i < size; i++){
+		outBuffer[i] = inBuffer[i];
+	}
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
+	processBuffer(&adc_buffer[0],&dac_buffer[0], BUFFER_HALFSIZE);
 }
-
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-  HAL_ADC_Stop_DMA(&hadc1);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-
-  for (int n = 0; n < BUFFER_SIZE; n++) {
-    dac_buffer[n] = adc_buffer[n];
-  }
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
+	processBuffer(&adc_buffer[BUFFER_HALFSIZE],&dac_buffer[BUFFER_HALFSIZE], BUFFER_HALFSIZE);
 }
-
-void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef *hdac)
-{
-}
-void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef *hdac)
-{
-  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-}
-
 /* USER CODE END 4 */
 
 /**
