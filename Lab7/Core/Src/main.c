@@ -31,8 +31,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_HALFSIZE 1000
-#define BUFFER_SIZE 2000
+#define BUFFER_HALFSIZE 10000
+#define BUFFER_SIZE 20000
 #define COS_TABLE_LEN 50
 /* USER CODE END PD */
 
@@ -56,12 +56,7 @@ UART_HandleTypeDef huart2;
 uint16_t adc_buffer[BUFFER_SIZE];
 uint16_t dac_buffer[BUFFER_SIZE];
 static int16_t cos_table[COS_TABLE_LEN] = {
-32767, 32509, 31738, 30466, 28714, 26509, 23886, 20886,
-17557, 13952, 10126, 6140, 2057, -2057, -6140, -10126, -13952,
--17557, -20886, -23886, -26509, -28714, -30466, -31738, -32509,
--32767, -32509, -31738, -30466, -28714, -26509, -23886, -20886,
--17557, -13952, -10126, -6140, -2057, 2057, 6140, 10126, 13952,
-17557, 20886, 23886, 26509, 28714, 30466, 31738, 32509
+	32767,32702,32509,32187,31738,31163,30466,29648,28714,27666,26509,25247,23886,22431,20886,19260,17557,15786,13952,12062,10126,8149,6140,4107,2057,0,-2057,-4107,-6140,-8149,-10126,-12062,-13952,-15786,-17557,-19260,-20886,-22431,-23886,-25247,-26509,-27666,-28714,-29648,-30466,-31163,-31738,-32187,-32509,-32702,
 };
 /* USER CODE END PV */
 
@@ -118,8 +113,9 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim6);
-  HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+  //HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
+  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -403,20 +399,24 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin PA8 */
+  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -425,17 +425,48 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void processBuffer(uint16_t *inBuffer, uint16_t *outBuffer, uint16_t size) {
-
-	for (int i = 0; i < size; i++){
-		outBuffer[i] = inBuffer[i];
+	int32_t x;
+	uint8_t gain = 1;
+	static uint16_t x_prev = 0;
+	uint8_t nFrames = BUFFER_HALFSIZE / COS_TABLE_LEN;
+	for (uint8_t fr = 0; fr < nFrames; fr++) {
+		for (uint8_t i = 0; i < COS_TABLE_LEN; i++) {
+			x = (int32_t) inBuffer[i + fr * COS_TABLE_LEN];
+			x = x - x_prev;
+			x = x * (int32_t) cos_table[i];
+			x = x >> (15 - gain);
+			outBuffer[i + fr * COS_TABLE_LEN] = (uint16_t) (x + 2048);
+			x_prev = inBuffer[i + fr * COS_TABLE_LEN];
+		}
 	}
-}
 
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
+}
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
-	processBuffer(&adc_buffer[0],&dac_buffer[0], BUFFER_HALFSIZE);
+	//processBuffer(&adc_buffer[0],&dac_buffer[0], BUFFER_HALFSIZE);
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	processBuffer(&adc_buffer[BUFFER_HALFSIZE],&dac_buffer[BUFFER_HALFSIZE], BUFFER_HALFSIZE);
+	HAL_ADC_Stop_DMA(&hadc1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+	processBuffer(&adc_buffer[0], &dac_buffer[0], BUFFER_SIZE);
+
+	  //for (int n = 0; n < BUFFER_SIZE; n++) {
+	  //  dac_buffer[n] = adc_buffer[n];
+	  //}
+    HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
+
+}
+
+void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef *hdac)
+{
+}
+void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef *hdac)
+{
+  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 }
 /* USER CODE END 4 */
 
