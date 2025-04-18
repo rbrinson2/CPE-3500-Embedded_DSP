@@ -451,11 +451,12 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	HAL_ADC_Stop_DMA(&hadc1);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-	processBuffer(&adc_buffer[0], &dac_buffer[0], BUFFER_SIZE);
+	processBuffer(&adc_buffer[BUFFER_HALFSIZE], &dac_buffer[BUFFER_HALFSIZE], BUFFER_SIZE);
 
-	  //for (int n = 0; n < BUFFER_SIZE; n++) {
-	  //  dac_buffer[n] = adc_buffer[n];
-	  //}
+	  for (int n = 0; n < BUFFER_SIZE; n++) {
+	    dac_buffer[n] = adc_buffer[n];
+	  }
+
     HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
 
 }

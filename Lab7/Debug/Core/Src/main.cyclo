@@ -9,7 +9,7 @@
 ../Core/Src/main.c:427:6:processBuffer	3
 ../Core/Src/main.c:444:6:HAL_GPIO_EXTI_Callback	1
 ../Core/Src/main.c:448:6:HAL_ADC_ConvHalfCpltCallback	1
-../Core/Src/main.c:451:6:HAL_ADC_ConvCpltCallback	1
-../Core/Src/main.c:463:6:HAL_DAC_ConvHalfCpltCallbackCh1	1
-../Core/Src/main.c:466:6:HAL_DAC_ConvCpltCallbackCh1	1
-../Core/Src/main.c:477:6:Error_Handler	1
+../Core/Src/main.c:451:6:HAL_ADC_ConvCpltCallback	2
+../Core/Src/main.c:464:6:HAL_DAC_ConvHalfCpltCallbackCh1	1
+../Core/Src/main.c:467:6:HAL_DAC_ConvCpltCallbackCh1	1
+../Core/Src/main.c:478:6:Error_Handler	1
