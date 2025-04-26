@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -31,6 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define FFT_LENGTH 2048
+#define SAMPLING_RATE 16384
 #define BUFFER_HALFSIZE 10000
 #define BUFFER_SIZE 20000
 #define COS_TABLE_LEN 50
@@ -53,6 +56,8 @@ TIM_HandleTypeDef htim6;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+arm_rfft_fast_instance_f32 fft_handler;
+
 uint16_t adc_buffer[BUFFER_SIZE];
 uint16_t dac_buffer[BUFFER_SIZE];
 static int16_t cos_table[COS_TABLE_LEN] = {
@@ -112,6 +117,7 @@ int main(void)
   MX_DAC1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+  arm_rfft_fast_init_f32(&fft_handler, FFT_LENGTH);
   HAL_TIM_Base_Start(&htim6);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
   //HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);

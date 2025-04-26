@@ -61,7 +61,7 @@ main-build: Project.elf secondary-outputs
 
 # Tool invocations
 Project.elf Project.map: $(OBJS) $(USER_OBJS) /home/rbrin/GitHub/CPE-3500-Embedded_DSP/Project/STM32L476RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/rbrin/GitHub/CPE-3500-Embedded_DSP/Project/STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Project.map" -Wl,--gc-sections -static -L../Drivers/CMSIS/Lib/GCC --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "Project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/rbrin/GitHub/CPE-3500-Embedded_DSP/Project/STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Project.map" -Wl,--gc-sections -static -L"/home/rbrin/GitHub/CPE-3500-Embedded_DSP/Project/Drivers/CMSIS/Lib/GCC" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
