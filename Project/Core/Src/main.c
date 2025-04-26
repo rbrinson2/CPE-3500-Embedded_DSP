@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "arm_math.h"
 #include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
@@ -32,11 +33,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+//Lab 8
 #define FFT_LENGTH 2048
 #define SAMPLING_RATE 16384
-#define BUFFER_HALFSIZE 10000
-#define BUFFER_SIZE 20000
-#define COS_TABLE_LEN 50
+
+//Lab 7
+#define BUFFER_HALFSIZE 1
+#define BUFFER_SIZE 2
+#define COS_TABLE_LEN 5
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,13 +61,18 @@ TIM_HandleTypeDef htim6;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+// Lab 8 Code
+float32_t input_signal[FFT_LENGTH];
+float32_t output_fft[FFT_LENGTH];
+float32_t output_fft_mag[FFT_LENGTH / 2];
+float32_t output_freq[FFT_LENGTH / 2];
+
 arm_rfft_fast_instance_f32 fft_handler;
 
+// Lab 7 Code
 uint16_t adc_buffer[BUFFER_SIZE];
 uint16_t dac_buffer[BUFFER_SIZE];
-static int16_t cos_table[COS_TABLE_LEN] = {
-	32767,32702,32509,32187,31738,31163,30466,29648,28714,27666,26509,25247,23886,22431,20886,19260,17557,15786,13952,12062,10126,8149,6140,4107,2057,0,-2057,-4107,-6140,-8149,-10126,-12062,-13952,-15786,-17557,-19260,-20886,-22431,-23886,-25247,-26509,-27666,-28714,-29648,-30466,-31163,-31738,-32187,-32509,-32702,
-};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,11 +127,25 @@ int main(void)
   MX_DAC1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+
+  // Lab 8
   arm_rfft_fast_init_f32(&fft_handler, FFT_LENGTH);
+
+  for (int i = 0; i < FFT_LENGTH; i++){
+    input_signal[i] = arm_cos_f32(2*PI*400*i/SAMPLING_RATE);
+  }
+
+  for (int i = 0; i < FFT_LENGTH; i++){
+    output_freq[i] = (float32_t)(i) / FFT_LENGTH * SAMPLING_RATE; 
+  }
+
+  arm_rfft_fast_f32(&fft_handler, input_signal, output_fft,0);
+
+  arm_cmplx_mag_f32(output_fft, output_fft_mag, FFT_LENGTH/2);
+
+  //Lab 7
   HAL_TIM_Base_Start(&htim6);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-  //HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
-  //HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -430,40 +454,16 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void processBuffer(uint16_t *inBuffer, uint16_t *outBuffer, uint16_t size) {
-	int32_t x;
-	uint8_t gain = 1;
-	static uint16_t x_prev = 0;
-	uint8_t nFrames = BUFFER_HALFSIZE / COS_TABLE_LEN;
-	for (uint8_t fr = 0; fr < nFrames; fr++) {
-		for (uint8_t i = 0; i < COS_TABLE_LEN; i++) {
-			x = (int32_t) inBuffer[i + fr * COS_TABLE_LEN];
-			x = x - x_prev;
-			x = x * (int32_t) cos_table[i];
-			x = x >> (15 - gain);
-			outBuffer[i + fr * COS_TABLE_LEN] = (uint16_t) (x + 2048);
-			x_prev = inBuffer[i + fr * COS_TABLE_LEN];
-		}
-	}
-
-}
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
 }
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
-	//processBuffer(&adc_buffer[0],&dac_buffer[0], BUFFER_HALFSIZE);
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	HAL_ADC_Stop_DMA(&hadc1);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-	processBuffer(&adc_buffer[BUFFER_HALFSIZE], &dac_buffer[BUFFER_HALFSIZE], BUFFER_SIZE);
-
-	  for (int n = 0; n < BUFFER_SIZE; n++) {
-	    dac_buffer[n] = adc_buffer[n];
-	  }
-
-    HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
+  HAL_ADC_Stop_DMA(&hadc1);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
 
 }
 
