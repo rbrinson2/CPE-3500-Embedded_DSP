@@ -19,7 +19,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "arm_math.h"
-#include <stdint.h>
+#include "stm32l476xx.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_adc.h"
+#include "stm32l4xx_hal_gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,15 +36,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define FFT_LENGTH 4096
+#define FREQ_CAP 256
+#define SAMPLING_RATE 20000
+#define MARGIN 20
+#define PASSWORD 5
 
-//Lab 8
-#define FFT_LENGTH 2048
-#define SAMPLING_RATE 16384
-
-//Lab 7
-#define BUFFER_HALFSIZE 1
-#define BUFFER_SIZE 2
-#define COS_TABLE_LEN 5
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,26 +53,30 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
-DAC_HandleTypeDef hdac1;
-DMA_HandleTypeDef hdma_dac_ch1;
-
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-// Lab 8 Code
-float32_t input_signal[FFT_LENGTH];
+enum Flag_t {TRUE, FALSE};
+enum Flag_t button_flag = FALSE;
+float32_t temp;
+float32_t row_freq;
+float32_t col_freq;
+
+char number;
+char row;
+char col;
+
 float32_t output_fft[FFT_LENGTH];
 float32_t output_fft_mag[FFT_LENGTH / 2];
+float32_t fft_buffer[FFT_LENGTH];
 float32_t output_freq[FFT_LENGTH / 2];
 
+uint16_t adc_buffer[FFT_LENGTH];
+
+
 arm_rfft_fast_instance_f32 fft_handler;
-
-// Lab 7 Code
-uint16_t adc_buffer[BUFFER_SIZE];
-uint16_t dac_buffer[BUFFER_SIZE];
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -81,7 +85,6 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_DAC1_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -89,6 +92,109 @@ static void MX_TIM6_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void button_logic(){
+  row = 0;
+  col = 0;
+
+  if (row_freq > (697 - MARGIN) && row_freq < (697 + MARGIN)){
+    row = 1;
+  }
+  else if (row_freq > (770 - MARGIN) && row_freq < (770 + MARGIN)){
+    row = 2;
+  }
+  else if (row_freq > (852 - MARGIN) && row_freq < (852 + MARGIN)){
+    row = 3;
+  }
+  else if (row_freq > (941 - MARGIN) && row_freq < (941 + MARGIN)){
+    row = 4;
+  }
+  if (col_freq > (1209 - MARGIN) && col_freq < (1209 + MARGIN)){
+    col = 1;
+  }
+  else if (col_freq > (1336 - MARGIN) && col_freq < (1336 + MARGIN)){
+    col = 2;
+  }
+  else if (col_freq > (1477 - MARGIN) && col_freq < (1477 + MARGIN)){
+    col = 3;
+  }
+
+  if      (row == 1 && col == 1) number = 1;
+  else if (row == 1 && col == 2) number = 2;
+  else if (row == 1 && col == 3) number = 3;
+  else if (row == 2 && col == 1) number = 4;
+  else if (row == 2 && col == 2) number = 5;
+  else if (row == 2 && col == 3) number = 6;
+  else if (row == 3 && col == 1) number = 7;
+  else if (row == 3 && col == 2) number = 8;
+  else if (row == 3 && col == 3) number = 9;
+  else if (row == 4 && col == 2) number = 0;
+}
+
+void freq_maxima(){
+
+  float32_t max1 = 0;
+  float32_t max1_freq = 0;
+  float32_t max2 = 0;
+  float32_t max2_freq = 0;
+
+  temp = 0;
+  row_freq = 0;
+  col_freq = 0;
+
+  for (int i = 1; i < FFT_LENGTH / 2; i++){
+    temp = output_fft_mag[i];
+    if (temp > max1) {
+      max2 = max1;
+      max2_freq = max1_freq;
+
+      max1 = temp;
+      max1_freq = output_freq[i];
+    }
+    else if  (temp > max2 && temp < max1){
+      max2 = temp;
+      max2_freq = output_freq[i];
+    }
+  }
+
+  if (max1_freq < max2_freq){
+    row_freq = max1_freq;
+    col_freq = max2_freq;
+  }
+  else {
+    row_freq = max2_freq;
+    col_freq = max1_freq;
+  }
+}
+
+void password_logic(){
+  if (number == PASSWORD){
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    HAL_Delay(2000);
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+  }
+  else {
+    for (int  i = 0; i < 20; i++){
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+      HAL_Delay(50);
+    }
+  }
+}
+
+void project_logic(){
+
+  if (button_flag == TRUE){
+    arm_rfft_fast_f32(&fft_handler, fft_buffer, output_fft,0);
+    arm_cmplx_mag_f32(output_fft, output_fft_mag, FFT_LENGTH/2);
+
+    freq_maxima(); 
+
+    button_logic();
+
+    password_logic();
+
+    button_flag = FALSE;
+  }
+}
 
 /* USER CODE END 0 */
 
@@ -124,28 +230,19 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
-  MX_DAC1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
-  // Lab 8
   arm_rfft_fast_init_f32(&fft_handler, FFT_LENGTH);
 
-  for (int i = 0; i < FFT_LENGTH; i++){
-    input_signal[i] = arm_cos_f32(2*PI*400*i/SAMPLING_RATE);
-  }
-
-  for (int i = 0; i < FFT_LENGTH; i++){
-    output_freq[i] = (float32_t)(i) / FFT_LENGTH * SAMPLING_RATE; 
-  }
-
-  arm_rfft_fast_f32(&fft_handler, input_signal, output_fft,0);
-
-  arm_cmplx_mag_f32(output_fft, output_fft_mag, FFT_LENGTH/2);
-
-  //Lab 7
   HAL_TIM_Base_Start(&htim6);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+
+  for (int i=0; i<FFT_LENGTH/2; i++)
+  {
+    output_freq[i] = (float32_t)(i) / FFT_LENGTH * SAMPLING_RATE;
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -155,6 +252,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    project_logic();
   }
   /* USER CODE END 3 */
 }
@@ -276,49 +374,6 @@ static void MX_ADC1_Init(void)
 }
 
 /**
-  * @brief DAC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_DAC1_Init(void)
-{
-
-  /* USER CODE BEGIN DAC1_Init 0 */
-
-  /* USER CODE END DAC1_Init 0 */
-
-  DAC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN DAC1_Init 1 */
-
-  /* USER CODE END DAC1_Init 1 */
-
-  /** DAC Initialization
-  */
-  hdac1.Instance = DAC1;
-  if (HAL_DAC_Init(&hdac1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** DAC channel OUT1 config
-  */
-  sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
-  sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
-  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
-  sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
-  sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
-  if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN DAC1_Init 2 */
-
-  /* USER CODE END DAC1_Init 2 */
-
-}
-
-/**
   * @brief TIM6 Initialization Function
   * @param None
   * @retval None
@@ -404,9 +459,6 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 
 }
 
@@ -429,7 +481,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -437,12 +489,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD2_Pin PA8 */
-  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_8;
+  /*Configure GPIO pin : LD2_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
@@ -454,27 +506,26 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    HAL_ADC_Start_DMA(&hadc1, adc_buffer, BUFFER_SIZE);
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+  HAL_ADC_Start_DMA(&hadc1, adc_buffer, FFT_LENGTH);
 }
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc) {
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc){
+  for (int i = 0; i < FFT_LENGTH/2; i++) fft_buffer[i] = (float32_t)adc_buffer[i]; 
+
 }
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
+  button_flag = TRUE;
+
+  for (int i = FFT_LENGTH/2; i < FFT_LENGTH; i++) {
+    fft_buffer[i] = (float32_t)adc_buffer[i];
+  }
+
+
   HAL_ADC_Stop_DMA(&hadc1);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, dac_buffer, BUFFER_SIZE, DAC_ALIGN_12B_R);
-
 }
 
-void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef *hdac)
-{
-}
-void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef *hdac)
-{
-  HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-}
 /* USER CODE END 4 */
 
 /**
